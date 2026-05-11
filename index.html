@@ -1,123 +1,356 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
     <title>MYRoutine</title>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-
     <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial;
+        }
+
         body {
             background: #0f172a;
             color: white;
-            font-family: Arial;
             padding: 30px;
         }
 
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .stats {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 15px;
+        }
+
+        .add-task {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
         input {
-            padding: 10px;
+            padding: 12px;
             border: none;
             border-radius: 10px;
+            background: #1e293b;
+            color: white;
+            min-width: 250px;
         }
 
         button {
-            padding: 10px;
+            padding: 12px;
             border: none;
             border-radius: 10px;
-            cursor: pointer;
             background: #3b82f6;
             color: white;
+            cursor: pointer;
         }
 
         .task {
             background: #1e293b;
-            margin-top: 10px;
-            padding: 15px;
+            padding: 20px;
             border-radius: 15px;
+            margin-top: 15px;
+        }
+
+        .task-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #0f172a;
+            border-radius: 999px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg,#3b82f6,#22c55e);
+        }
+
+        .completed {
+            color: #22c55e;
+            margin-top: 10px;
+            font-weight: bold;
         }
     </style>
+
 </head>
 
 <body>
 
-    <h1>MYRoutine 🚀</h1>
+    <div class="topbar">
 
-    <input id="taskInput" placeholder="Nuova task">
+        <h1>MYRoutine 🚀</h1>
 
-    <button onclick="addTask()">
-        Aggiungi
-    </button>
+        <div class="stats">
+
+            <p id="completedCounter">
+                Completate: 0 / 0
+            </p>
+
+            <p id="averageProgress">
+                Media completamento: 0%
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="add-task">
+
+        <input type="text"
+               id="taskInput"
+               placeholder="Nuova task...">
+
+        <button onclick="addTask()">
+            Aggiungi
+        </button>
+
+    </div>
 
     <div id="taskList"></div>
 
     <script>
 
-        const SUPABASE_URL = "https://gtgashnbbwfixcqikiiv.supabase.co";
+        const TOKEN = "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";
 
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0Z2FzaG5iYndmaXhjcWlraWl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0Nzg5MDgsImV4cCI6MjA5NDA1NDkwOH0.qeDrOgaQm0y9VR3sLc4AxGzDzkAsrgSUlTbj7cn85LY";
+        const USERNAME = "3BBy-git";
 
-        const client = supabase.createClient(
-            SUPABASE_URL,
-            SUPABASE_KEY
-        );
+        const REPO = "CPT-Tournaments";
+
+        const FILE_PATH = "data.json";
+
+        async function loadData() {
+
+            const response = await fetch(
+                `https://raw.githubusercontent.com/${USERNAME}/${REPO}/main/${FILE_PATH}?t=${Date.now()}`
+            );
+
+            return await response.json();
+        }
+
+        async function saveData(newData) {
+
+            const fileResponse = await fetch(
+                `https://api.github.com/repos/${USERNAME}/${REPO}/contents/${FILE_PATH}`,
+                {
+                    headers: {
+                        Authorization: `token ${TOKEN}`
+                    }
+                }
+            );
+
+            const fileData = await fileResponse.json();
+
+            const sha = fileData.sha;
+
+            const content = btoa(
+                unescape(
+                    encodeURIComponent(
+                        JSON.stringify(newData, null, 2)
+                    )
+                )
+            );
+
+            await fetch(
+                `https://api.github.com/repos/${USERNAME}/${REPO}/contents/${FILE_PATH}`,
+                {
+
+                    method: "PUT",
+
+                    headers: {
+                        Authorization: `token ${TOKEN}`,
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        message: "update tasks",
+
+                        content: content,
+
+                        sha: sha
+
+                    })
+
+                }
+            );
+
+        }
+
+        async function renderTasks() {
+
+            const data = await loadData();
+
+            const container =
+                document.getElementById("taskList");
+
+            container.innerHTML = "";
+
+            let completed = 0;
+
+            let totalProgress = 0;
+
+            data.tasks.forEach((task, index) => {
+
+                totalProgress += task.progress;
+
+                if (task.progress === 100) {
+                    completed++;
+                }
+
+                container.innerHTML += `
+
+                <div class="task">
+
+                    <div class="task-top">
+
+                        <div>
+
+                            <h2>${task.title}</h2>
+
+                            ${task.progress === 100
+                        ?
+                        `<div class="completed">
+                                    ✔ Completata
+                                </div>`
+                        :
+                        ``
+                    }
+
+                        </div>
+
+                        <select
+                            onchange="updateProgress(${index}, this.value)"
+                        >
+
+                            ${generateOptions(task.progress)}
+
+                        </select>
+
+                    </div>
+
+                    <div class="progress-bar">
+
+                        <div
+                            class="progress"
+                            style="width:${task.progress}%"
+                        ></div>
+
+                    </div>
+
+                    <p>${task.progress}%</p>
+
+                </div>
+
+            `;
+            });
+
+            document.getElementById(
+                "completedCounter"
+            ).innerText =
+                `Completate: ${completed} / ${data.tasks.length}`;
+
+            const avg =
+                data.tasks.length > 0
+                    ?
+                    totalProgress / data.tasks.length
+                    :
+                    0;
+
+            document.getElementById(
+                "averageProgress"
+            ).innerText =
+                `Media completamento: ${avg.toFixed(1)}%`;
+
+        }
+
+        function generateOptions(selected) {
+
+            let html = "";
+
+            for (let i = 0; i <= 100; i += 10) {
+
+                html += `
+                <option
+                    value="${i}"
+                    ${selected == i ? "selected" : ""}
+                >
+                    ${i}%
+                </option>
+            `;
+            }
+
+            return html;
+        }
 
         async function addTask() {
 
-            const input = document.getElementById("taskInput");
+            const input =
+                document.getElementById("taskInput");
 
             if (input.value.trim() === "") return;
 
-            const { error } = await client
-                .from("tasks")
-                .insert([
-                    {
-                        title: input.value,
-                        progress: 0
-                    }
-                ]);
+            const data = await loadData();
 
-            if (error) {
-                console.error(error);
-                alert(error.message);
-                return;
-            }
+            data.tasks.push({
 
-            input.value = "";
-
-            loadTasks();
-        }
-
-        async function loadTasks() {
-
-            const { data, error } = await client
-                .from("tasks")
-                .select("*");
-
-            if (error) {
-                console.error(error);
-                return;
-            }
-
-            const taskList = document.getElementById("taskList");
-
-            taskList.innerHTML = "";
-
-            data.forEach(task => {
-
-                taskList.innerHTML += `
-          <div class="task">
-            <h3>${task.title}</h3>
-            <p>${task.progress}%</p>
-          </div>
-        `;
+                title: input.value,
+                progress: 0
 
             });
 
+            await saveData(data);
+
+            input.value = "";
+
+            renderTasks();
         }
 
-        loadTasks();
+        async function updateProgress(index, value) {
+
+            const data = await loadData();
+
+            data.tasks[index].progress =
+                parseInt(value);
+
+            await saveData(data);
+
+            renderTasks();
+        }
+
+        renderTasks();
 
     </script>
 
