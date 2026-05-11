@@ -1,32 +1,125 @@
 <!DOCTYPE html>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script src="script.js"></script>
 <html lang="it">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>MYRoutine</title>
 
-    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial;
+            padding: 30px;
+        }
+
+        input {
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: #3b82f6;
+            color: white;
+        }
+
+        .task {
+            background: #1e293b;
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 15px;
+        }
+    </style>
 </head>
+
 <body>
 
     <h1>MYRoutine 🚀</h1>
 
-    <div class="add-task">
+    <input id="taskInput" placeholder="Nuova task">
 
-        <input type="text" id="taskInput" placeholder="Nuova task">
-
-        <button id="addBtn">
-            Aggiungi
-        </button>
-
-    </div>
+    <button onclick="addTask()">
+        Aggiungi
+    </button>
 
     <div id="taskList"></div>
 
-    <script type="module" src="script.js"></script>
+    <script>
+
+        const SUPABASE_URL = "METTI_URL";
+
+        const SUPABASE_KEY = "METTI_KEY";
+
+        const client = supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        );
+
+        async function addTask() {
+
+            const input = document.getElementById("taskInput");
+
+            if (input.value.trim() === "") return;
+
+            const { error } = await client
+                .from("tasks")
+                .insert([
+                    {
+                        title: input.value,
+                        progress: 0
+                    }
+                ]);
+
+            if (error) {
+                console.error(error);
+                alert(error.message);
+                return;
+            }
+
+            input.value = "";
+
+            loadTasks();
+        }
+
+        async function loadTasks() {
+
+            const { data, error } = await client
+                .from("tasks")
+                .select("*");
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            const taskList = document.getElementById("taskList");
+
+            taskList.innerHTML = "";
+
+            data.forEach(task => {
+
+                taskList.innerHTML += `
+          <div class="task">
+            <h3>${task.title}</h3>
+            <p>${task.progress}%</p>
+          </div>
+        `;
+
+            });
+
+        }
+
+        loadTasks();
+
+    </script>
 
 </body>
 </html>
